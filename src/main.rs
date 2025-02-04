@@ -1,5 +1,15 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use clap::Parser;
 use serde::{Deserialize, Serialize};
+
+/// Simple Prime Service
+#[derive(Parser)]
+#[command(version)]
+struct Args {
+    /// port to use
+    #[arg(short, long, default_value = "9000")]
+    port: Option<u16>,
+}
 
 #[derive(Serialize, Deserialize)]
 struct Request {
@@ -45,7 +55,7 @@ async fn get_primes(request: web::Json<Request>) -> impl Responder {
     let result: Vec<u32> = calculate_primes(request.start, request.end);
     let json = match serde_json::to_string(&result) {
         Ok(data) => data,
-        Err(_) => format!("Failed to extract data"),
+        Err(_) => "Failed to extract data".to_string(),
     };
     HttpResponse::Ok().body(json)
 }
@@ -53,10 +63,15 @@ async fn get_primes(request: web::Json<Request>) -> impl Responder {
 // Main entry point to start the server
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let args = Args::parse();
+    let port = args.port.unwrap_or_default();
+
+    println!("Starting Server on Port: {port}");
+
     HttpServer::new(|| {
         App::new().route("/primes", web::post().to(get_primes)) // POST /items
     })
-    .bind(("0.0.0.0", 8080))?
+    .bind(("0.0.0.0", port))?
     .run()
     .await
 }
