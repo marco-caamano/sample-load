@@ -75,3 +75,52 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_prime() {
+        assert_eq!(is_prime(1), true); // 1 is considered prime in this implementation
+        assert_eq!(is_prime(2), true); // 2 is prime
+        assert_eq!(is_prime(3), true); // 3 is prime
+        assert_eq!(is_prime(4), false); // 4 is not prime
+        assert_eq!(is_prime(17), true); // 17 is prime
+        assert_eq!(is_prime(18), false); // 18 is not prime
+    }
+
+    #[test]
+    fn test_calculate_primes() {
+        assert_eq!(calculate_primes(1, 10), vec![1, 2, 3, 5, 7]); // primes between 1 and 10
+        assert_eq!(calculate_primes(10, 20), vec![11, 13, 17, 19]); // primes between 10 and 20
+        assert_eq!(calculate_primes(20, 30), vec![23, 29]); // primes between 20 and 30
+        assert_eq!(calculate_primes(30, 30), Vec::<u32>::new()); // explicitly specify the type of the empty vector
+    }
+}
+
+
+#[cfg(test)]
+mod tests_api {
+    use super::*;
+    use actix_web::{test, App};
+
+    #[actix_web::test]
+    async fn test_get_primes_api() {
+        let app = test::init_service(
+            App::new().route("/primes", web::post().to(get_primes)),
+        )
+        .await;
+
+        let request = test::TestRequest::post()
+            .uri("/primes")
+            .set_json(&Request { start: 1, end: 10 })
+            .to_request();
+
+        let response = test::call_service(&app, request).await;
+        assert!(response.status().is_success());
+
+        let body: Vec<u32> = test::read_body_json(response).await;
+        assert_eq!(body, vec![1, 2, 3, 5, 7]); // primes between 1 and 10
+    }
+}
