@@ -23,9 +23,9 @@ jobs:
     - name: Install Tarpaulin
       run: cargo install cargo-tarpaulin
     - name: Run Code Coverage
-      run: cargo tarpaulin --verbose --out Xml
+      run: cargo tarpaulin --verbose --out HTML
     - name: Upload Coverage Report
       uses: actions/upload-pages-artifact@v3
       with:
         name: coverage-report
-        path: tarpaulin-report.xml
+        path: tarpaulin-report.html
