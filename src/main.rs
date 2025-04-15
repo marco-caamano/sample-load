@@ -60,20 +60,25 @@ async fn get_primes(request: web::Json<Request>) -> impl Responder {
     HttpResponse::Ok().body(json)
 }
 
+// Function to initialize and start the server
+async fn start_server(port: u16) -> std::io::Result<()> {
+    println!("Starting Server on Port: {port}");
+
+    HttpServer::new(|| {
+        App::new().route("/primes", web::post().to(get_primes)) // POST /primes
+    })
+    .bind(("0.0.0.0", port))?
+    .run()
+    .await
+}
+
 // Main entry point to start the server
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = Args::parse();
     let port = args.port.unwrap_or_default();
 
-    println!("Starting Server on Port: {port}");
-
-    HttpServer::new(|| {
-        App::new().route("/primes", web::post().to(get_primes)) // POST /items
-    })
-    .bind(("0.0.0.0", port))?
-    .run()
-    .await
+    start_server(port).await
 }
 
 #[cfg(test)]
@@ -97,8 +102,31 @@ mod tests {
         assert_eq!(calculate_primes(20, 30), vec![23, 29]); // primes between 20 and 30
         assert_eq!(calculate_primes(30, 30), Vec::<u32>::new()); // explicitly specify the type of the empty vector
     }
-}
 
+    #[actix_web::test]
+    async fn test_server_startup() {
+        let port = 9001; // Use a test-specific port
+        std::thread::spawn(move || {
+            let _ = actix_web::rt::System::new().block_on(start_server(port));
+        });
+
+        // Allow some time for the server to start
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
+        // Test if the server is running by sending a request
+        let client = reqwest::Client::new();
+        let response = client
+            .post(&format!("http://127.0.0.1:{}/primes", port))
+            .json(&Request { start: 1, end: 10 })
+            .send()
+            .await
+            .expect("Failed to send request");
+
+        assert!(response.status().is_success());
+        let body: Vec<u32> = response.json().await.expect("Failed to parse response");
+        assert_eq!(body, vec![1, 2, 3, 5, 7]); // primes between 1 and 10
+    }
+}
 
 #[cfg(test)]
 mod tests_api {
